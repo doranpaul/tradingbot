@@ -1,3 +1,4 @@
+import os
 import threading
 from coinbase.rest import RESTClient
 import time
@@ -8,13 +9,17 @@ from coinbase.websocket import WSClient
 import json
 from json import dumps, loads
 import signal
-
 import ta.momentum
 import ta.trend
+import ta.volatility
+import uuid
+from dotenv import load_dotenv
 
-api_key = "organizations/c205ec34-4a85-4111-bdd4-23aaf14c8e25/apiKeys/3b7fc225-615e-4801-86a7-2aa954a24c26"
-api_secret = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMDJv4di7KoaICisgBN976RJD7FYFZXTUB3/3/uRD0zEoAoGCCqGSM49\nAwEHoUQDQgAEQ8Zc5da/GV9opTDXJ5p2j4oEXBZCkHlbs79N9bJAQPIdO1scr6t4\n6BiVxuT88eFWQTt1DGfbOSrmm3S2W1TEsQ==\n-----END EC PRIVATE KEY-----\n"
+# Load environment variables from .env file
+load_dotenv()
 
+api_key = os.getenv("api_key")
+api_secret = os.getenv("api_secret")
 client = RESTClient(api_key=api_key, api_secret=api_secret)
 
 #accounts = client.get_accounts()

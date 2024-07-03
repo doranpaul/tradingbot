@@ -1,0 +1,12 @@
+os
+threading
+coinbase.rest
+time
+pandas
+ta
+asyncio
+coinbase.websocket
+json
+signal
+uuid
+dotenv
