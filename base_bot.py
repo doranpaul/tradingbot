@@ -11,12 +11,14 @@ from json import dumps, loads
 import signal
 import ta.momentum
 import ta.trend
-import ta.volatility
-import uuid
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+api_key = os.getenv("api_key")
+api_secret = os.getenv("api_secret")
+
 
 api_key = os.getenv("api_key")
 api_secret = os.getenv("api_secret")
