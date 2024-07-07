@@ -246,6 +246,25 @@ def check_and_trade():
                 if len(df) >= 26:
                     df = apply_technical_indicators(df)
                     performance_score = calculate_performance_score(df)
+                    current_price = df['price'].iloc[-1]
+
+                    if entry_prices[product_id]:
+                        entry_price = entry_prices[product_id]
+                        if current_price <= entry_price * (1 - STOP_LOSS_PERCENTAGE):
+                            coin_balance = portfolio[currency]
+                            trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
+                            if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                                execute_trade('sell', product_id, trade_amount)
+                            else:
+                                print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id} (stop-loss triggered)")
+                        elif current_price >= entry_price * (1 + TAKE_PROFIT_PERCENTAGE):
+                            coin_balance = portfolio[currency]
+                            trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
+                            if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                                execute_trade('sell', product_id, trade_amount)
+                            else:
+                                print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id} (take-profit triggered)")
+
                     if performance_score > 0.5:
                         trade_amount = determine_buy_trade_amount(performance_score, gbp_balance, product_id)
                         if trade_amount > min_trade_amounts.get(currency, 0.0001):
@@ -263,6 +282,7 @@ def check_and_trade():
                         print(f"Performance score is neutral: {performance_score:.2f} for {product_id}")
     if gbp_balance == 0:
         print("GBP balance is zero. Cannot execute trades.")
+
 
 # Retry mechanism for WebSocket connection
 async def run_websocket(duration, retries=5, retry_delay=5):
