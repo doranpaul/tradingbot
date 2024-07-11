@@ -166,13 +166,19 @@ def determine_buy_trade_amount(performance_score, gbp_balance, product_id, porti
     
     base_currency = product_id.split('-')[0]
     max_precision = buy_max_precisions.get(base_currency, 6)
+    min_trade_amount = min_trade_amounts.get(base_currency, 0.0001)
     
     trade_amount = round(trade_amount, max_precision)
     if trade_amount < 1:
-        trade_amount = 1  # Minimum trade amount for most currencies
+        trade_amount = 1  # Ensure trade amount respects the minimum
+    
+    # Ensure trade amount is not zero
+    if trade_amount == 0:
+        trade_amount = min_trade_amount
     
     print(f"Determined buy trade amount for {product_id}: {trade_amount:.{max_precision}f} for performance score: {performance_score:.2f} and GBP balance: {gbp_balance:.8f}")
     return trade_amount
+
 
 def determine_sell_trade_amount(performance_score, coin_balance, product_id, portion=0.3):
     allocated_balance = coin_balance * portion
@@ -180,20 +186,22 @@ def determine_sell_trade_amount(performance_score, coin_balance, product_id, por
     
     base_currency = product_id.split('-')[0]
     max_precision = sell_max_precisions.get(base_currency, 6)
+    min_trade_amount = min_trade_amounts.get(base_currency, 0.0001)
     
     trade_amount = round(trade_amount, max_precision)
-
-    if coin_balance < 1:
-        print(f"Coin balance for {product_id} is low and may lead to trade failing")
+    if trade_amount < min_trade_amount:
+        trade_amount = min_trade_amount  # Ensure trade amount respects the minimum
     
     print(f"Determined sell trade amount for {product_id}: {trade_amount:.{max_precision}f} for performance score: {performance_score:.2f} and coin balance: {coin_balance:.8f}")
     return trade_amount
 
+
 # Function to execute trades
 def execute_trade(decision, product_id, trade_amount):
-    MIN_TRADE_AMOUNT = 0.00001
+    base_currency = product_id.split('-')[0]
+    min_trade_amount = min_trade_amounts.get(base_currency, 0.0001)
     
-    if trade_amount > MIN_TRADE_AMOUNT:
+    if trade_amount >= min_trade_amount and trade_amount > 0:
         try:
             trade_counters[product_id] += 1  # Increment the counter for each trade
             client_order_id = f"{session_id}_{product_id}_{trade_counters[product_id]}"
@@ -201,22 +209,24 @@ def execute_trade(decision, product_id, trade_amount):
             if decision == 'buy':
                 order = client.market_order_buy(client_order_id=f"order_buy_{client_order_id}", product_id=product_id, quote_size=str(trade_amount))
                 print(f"Executed buy order: {order}")
-                if order['success']:
+                if order.get('success'):
                     entry_prices[product_id] = order['price']  # Store the entry price
             elif decision == 'sell':
                 order = client.market_order_sell(client_order_id=f"order_sell_{client_order_id}", product_id=product_id, base_size=str(trade_amount))
                 print(f"Executed sell order: {order}")
-                if order['success']:
+                if order.get('success'):
                     entry_prices[product_id] = None  # Reset the entry price
                 
-                if not order['success']:
-                    print(f"Failed to execute order: {order['failure_reason']}")
+                if not order.get('success'):
+                    print(f"Failed to execute order: {order.get('failure_reason', 'Unknown reason')}")
                 else:
                     print(json.dumps(order, indent=2))
         except Exception as e:
             print(f"Error executing {decision} order for {product_id} with amount {trade_amount}: {e}")
     else:
         print(f"Trade amount {trade_amount:.8f} is too small to execute for {decision} on {product_id}")
+
+
 
 min_trade_amounts = {
     'BTC': 0.0001,'ETH': 0.0001,'LTC': 0.01,'BCH': 0.01,'ADA': 10,
@@ -253,28 +263,28 @@ def check_and_trade():
                         if current_price <= entry_price * (1 - STOP_LOSS_PERCENTAGE):
                             coin_balance = portfolio[currency]
                             trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
-                            if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                            if trade_amount >= min_trade_amounts.get(currency, 0.0001):
                                 execute_trade('sell', product_id, trade_amount)
                             else:
                                 print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id} (stop-loss triggered)")
                         elif current_price >= entry_price * (1 + TAKE_PROFIT_PERCENTAGE):
                             coin_balance = portfolio[currency]
                             trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
-                            if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                            if trade_amount >= min_trade_amounts.get(currency, 0.0001):
                                 execute_trade('sell', product_id, trade_amount)
                             else:
                                 print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id} (take-profit triggered)")
 
                     if performance_score > 0.5:
                         trade_amount = determine_buy_trade_amount(performance_score, gbp_balance, product_id)
-                        if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                        if trade_amount >= min_trade_amounts.get(currency, 0.0001) and trade_amount > 0:
                             execute_trade('buy', product_id, trade_amount)
                         else:
                             print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id}")
                     elif performance_score < 0.5:
                         coin_balance = portfolio[currency]
                         trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
-                        if trade_amount > min_trade_amounts.get(currency, 0.0001):
+                        if trade_amount >= min_trade_amounts.get(currency, 0.0001) and trade_amount > 0:
                             execute_trade('sell', product_id, trade_amount)
                         else:
                             print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id}")
