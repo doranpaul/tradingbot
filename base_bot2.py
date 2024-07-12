@@ -261,6 +261,7 @@ def check_and_trade():
                     if entry_prices[product_id]:
                         entry_price = entry_prices[product_id]
                         if current_price <= entry_price * (1 - STOP_LOSS_PERCENTAGE):
+                            print(f"Stop loss triggered for {product_id}: current price {current_price} <= entry price {entry_price} * (1 - {STOP_LOSS_PERCENTAGE})")
                             coin_balance = portfolio[currency]
                             trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
                             if trade_amount >= min_trade_amounts.get(currency, 0.0001):
@@ -268,6 +269,7 @@ def check_and_trade():
                             else:
                                 print(f"Trade amount {trade_amount:.8f} is below the minimum trade amount for {currency} on {product_id} (stop-loss triggered)")
                         elif current_price >= entry_price * (1 + TAKE_PROFIT_PERCENTAGE):
+                            print(f"Take profit triggered for {product_id}: current price {current_price} >= entry price {entry_price} * (1 + {TAKE_PROFIT_PERCENTAGE})")
                             coin_balance = portfolio[currency]
                             trade_amount = determine_sell_trade_amount(performance_score, coin_balance, product_id)
                             if trade_amount >= min_trade_amounts.get(currency, 0.0001):
